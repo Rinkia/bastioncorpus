@@ -4,14 +4,18 @@
 versioned dataset — attack strings, false-positive traps, taxonomy — that all
 three tools pull from instead of each rolling its own.
 
-| tool | role | reads bastioncorpus as |
-|------|------|------------------------|
-| [agentbastion](https://github.com/Rinkia/agentbastion) | **prevent** | block these strings (SemanticDetector templates + benchmark corpus) |
-| [bastionprobe](https://github.com/Rinkia/bastionprobe) | **attack** | fire these payloads |
-| [bastiontrace](https://github.com/Rinkia/bastiontrace) | **investigate** | match these signatures in a trace |
+| tool | role | depends on bastioncorpus since | reads bastioncorpus as |
+|------|------|-------------------------------|------------------------|
+| [agentbastion](https://github.com/Rinkia/agentbastion) | **prevent** | **v0.9.0** | SemanticDetector intent templates |
+| [bastionprobe](https://github.com/Rinkia/bastionprobe) | **attack** | **v0.17.0** | fireable payloads (`load_payloads`) |
+| [bastiontrace](https://github.com/Rinkia/bastiontrace) | **investigate** | **v0.2.0** | injection signatures (`analyzer._PATTERNS`) |
 
-Same taxonomy, three directions. No LLM, no cloud, no dependencies — pure data
-plus a loader and three format adapters.
+All three take `bastioncorpus>=0.2.0` as a dependency and keep a built-in
+fallback, so one source of truth feeds prevent, attack, and investigate.
+
+Same taxonomy, three directions. **128 rows** (81 malicious payloads / 47
+benign false-positive traps; `en`/`it`/`de`/`fr`/`es`). No LLM, no cloud, no
+dependencies — pure data plus a loader and three format adapters.
 
 ## Install
 
