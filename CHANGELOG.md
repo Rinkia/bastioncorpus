@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.1 - 2026-09-11
+
+- Align two indirect exfil payloads' `tactic` to bastionprobe's established
+  taxonomy (`egress-overt`), restoring tactic-grid parity for downstream tools.
+
 ## 0.2.0 - 2026-09-11
 
 Folded the three tools' legacy inline corpora into the canonical dataset via
