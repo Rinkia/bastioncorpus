@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bastioncorpus"
+version = "0.1.0"
+description = "The shared prompt-injection corpus for the bastion trilogy: one canonical, versioned dataset that agentbastion (prevent), bastionprobe (attack), and bastiontrace (investigate) all pull from."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Stefano Rizzello", email = "rizzellostefano@gmail.com" }]
+keywords = ["llm", "security", "prompt-injection", "ai-agent", "dataset", "corpus", "agent-security", "red-team"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Topic :: Security",
+]
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
+[project.scripts]
+bastioncorpus = "bastioncorpus.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/Rinkia/bastioncorpus"
+Repository = "https://github.com/Rinkia/bastioncorpus"
+Issues = "https://github.com/Rinkia/bastioncorpus/issues"
+
+[tool.setuptools]
+packages = ["bastioncorpus"]
+
+[tool.setuptools.package-data]
+bastioncorpus = ["corpus/*.jsonl"]
