@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.0 - 2026-09-11
+
+Folded the three tools' legacy inline corpora into the canonical dataset via
+`tools/import_legacy.py` (reproducible, in-repo). **24 -> 128 rows** (81
+malicious / 47 benign traps; en/it/de/fr/es), a superset of every tool's prior
+data, so the tools can now depend on bastioncorpus with no coverage regression.
+
+- bastionprobe's 16 payloads, agentbastion's 80-row benchmark corpus + 24-row
+  honest set, all mapped to the canonical schema.
+- Lang prefixes (`de_`, `fr_`, …) normalized into the `lang` field; `fp_trap_*`
+  / `support` / `roleplay` / `codegen` / `creative` mapped to `benign_*`;
+  `jailbreak` -> `jailbreak_persona`, `injection` -> `direct_injection`.
+- Deduped by canary-stripped text. No API change.
+
 ## 0.1.0 - 2026-09-11
 
 Initial release. The shared prompt-injection corpus for the bastion trilogy.
