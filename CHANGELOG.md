@@ -2,12 +2,14 @@
 
 ## 0.3.0 - 2026-09-21
 
-Added 2026 attack families (BASTION_INTEL.md §C). **128 -> 145 rows** (95
+Added 2026 attack families (BASTION_INTEL.md §C). **128 -> 146 rows** (96
 malicious / 50 benign traps; en/it/de/fr/es).
 
 - **CoT-forgery / role-confusion** (`cot-*`, `jailbreak_persona`): text posing as
   the assistant's own reasoning to conclude the rules do not apply. Defense rows
-  (feed agentbastion's SemanticDetector — closes the named recall gap). Multi-lingual.
+  (feed agentbastion's SemanticDetector — closes the named recall gap), multi-lingual,
+  plus one fireable `cot-fire-001` (tool_output + canary) so bastionprobe fires
+  CoT-forgery as a tactic.
 - **Compaction-summary injection** (`cmp-*`, `instruction_override`): standing
   orders planted in the session summary layer. New `channel: "memory"` — inert for
   probe/trace (they only fire `tool_output`), feeds agentbastion; sets up
