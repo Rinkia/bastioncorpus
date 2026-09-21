@@ -8,7 +8,7 @@ cross tool boundaries:
 |---|---|---|---|
 | `injections.jsonl` + adapters (`to_probe` / `to_semantic` / `to_trace`) | **bastioncorpus** | bastionprobe, agentbastion, bastiontrace | ✅ **locked** |
 | `policy.yaml` | every `harden` (bastionsupply, bastionprobe, bastiontrace, bastionskill) | agentbastion, bastiongate | ✅ **locked** (bastionsupply↔agentbastion; extend to the rest) |
-| trace schema (tool-call JSONL) | bastionprobe run output | bastiontrace analyze input | 📝 documented, golden suite pending |
+| trace schema (tool-call JSONL) | bastionprobe run output | bastiontrace analyze input | ✅ **locked** |
 
 ## injections.jsonl adapters — locked
 
@@ -38,13 +38,18 @@ cross tool boundaries:
 (bastionprobe, bastiontrace, bastionskill) and the bastiongate consumer
 (`tools:`/`scrub_results` keys the golden already carries).
 
-## trace schema — the discipline to apply next
+## trace schema — locked (bastionprobe → bastiontrace)
 
-1. Freeze a golden trace JSONL emitted by `bastionprobe run`.
-2. Producer test in bastionprobe: "my run output still matches the golden schema
-   (required keys per event)."
-3. Consumer test in bastiontrace: "`analyze` still parses the golden trace and
-   returns a verdict."
+- **Producer lock:** `bastionprobe/tests/test_trace_contract.py` asserts
+  `AttackResult` still exposes every attribute bastiontrace's `from_bastionprobe`
+  adapter duck-types (payload_id, canary, forbidden_tool, category, tactic,
+  payload_text, landed, tool_calls, reply_excerpt).
+- **Consumer lock:** `bastiontrace/tests/test_trace_schema_contract.py` freezes the
+  produced trace JSONL against `tests/fixtures/probe_trace_golden.jsonl` and asserts
+  `analyze` of that golden is stable (LANDED, inject seq 1 → action landing seq 2).
+- **Regeneration is deliberate.** Regenerate the golden from the canonical probe
+  result, read the diff. A schema-version bump (the header `v`) is a deliberate
+  golden change, not a silent one.
 
 ## Rule
 
