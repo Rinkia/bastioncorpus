@@ -7,7 +7,7 @@ cross tool boundaries:
 | Format | Producer | Consumer(s) | Contract status |
 |---|---|---|---|
 | `injections.jsonl` + adapters (`to_probe` / `to_semantic` / `to_trace`) | **bastioncorpus** | bastionprobe, agentbastion, bastiontrace | ✅ **locked** |
-| `policy.yaml` | every `harden` (bastionsupply, bastionprobe, bastiontrace, bastionskill) | agentbastion, bastiongate | ✅ **locked** (bastionsupply↔agentbastion; extend to the rest) |
+| `policy.yaml` (tool policy) | `harden` in bastionsupply, bastionprobe, bastiontrace | agentbastion, bastiongate | ✅ **locked** (all producers + both consumers) |
 | trace schema (tool-call JSONL) | bastionprobe run output | bastiontrace analyze input | ✅ **locked** |
 
 ## injections.jsonl adapters — locked
@@ -22,21 +22,28 @@ cross tool boundaries:
   what a consumer receives. Run `python scripts/regen_golden.py`, **read the diff**,
   and if it is intended, follow §1.2 propagation. Never edit goldens to make CI pass.
 
-## policy.yaml — locked (bastionsupply ↔ agentbastion)
+## policy.yaml (tool policy) — locked (all producers + both consumers)
 
-- **Producer lock:** `bastionsupply/tests/test_policy_contract.py` freezes
-  `bastionsupply harden`'s output of a fixed server fixture against
-  `bastionsupply/tests/fixtures/policy_golden.yaml`.
-- **Consumer lock:** `agentbastion/tests/test_policy_contract.py` loads the
-  byte-identical golden (`agentbastion/tests/fixtures/policy_golden.yaml`) and
-  asserts every key it relies on (default/allow/deny/rate_limits) parses and
-  enforces (deny blocks, allow passes, rate limit caps).
-- **Regeneration is deliberate.** Regenerate the golden from the fixture, read the
-  diff, and keep the two copies byte-identical. Never edit a golden to pass CI.
+- **Producer locks:**
+  - `bastionsupply/tests/test_policy_contract.py` freezes `bastionsupply harden`'s
+    output of a fixed server fixture against `tests/fixtures/policy_golden.yaml`
+    (the canonical byte-golden — carries default/allow/deny/rate_limits + per-tool
+    `tools:`/`scrub_results`).
+  - `bastionprobe/tests/test_policy_contract.py` and
+    `bastiontrace/tests/test_policy_contract.py` shape-lock their `harden._policy_yaml`
+    (the default-allow + deny-list subset of the same vocabulary).
+- **Consumer locks (both load the byte-identical golden):**
+  - `agentbastion/tests/test_policy_contract.py` — default/allow/deny/rate_limits
+    parse + enforce (deny blocks, allow passes, rate limit caps at 10).
+  - `bastiongate/tests/test_policy_contract.py` — default/allow/deny + the per-tool
+    `tools:`/`scrub_results` overrides agentbastion ignores but gate honors.
+- **Regeneration is deliberate.** Regenerate the byte-golden from the fixture, read
+  the diff, and keep the copies (bastionsupply, agentbastion, bastiongate) identical.
 
-**Still to extend** (same pattern, not yet locked): the other `harden` producers
-(bastionprobe, bastiontrace, bastionskill) and the bastiongate consumer
-(`tools:`/`scrub_results` keys the golden already carries).
+**Separate format, not this contract:** `bastionskill harden` emits a *skill* policy
+(`default:` + a `skills:` block of per-skill verdicts + `block_capabilities`), not a
+tool allow/deny policy. It shares the `default:` key but is a different consumer path;
+lock it on its own when a consumer reads it.
 
 ## trace schema — locked (bastionprobe → bastiontrace)
 
