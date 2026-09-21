@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.4.0 - 2026-09-21
+
+Added **memory-poisoning** attack payloads (`mp-fire-*`, `indirect_injection`,
+tactic `memory-poisoning`). **146 -> 150 rows** (99 malicious / 51 benign).
+
+- Fireable payloads that arrive in tool output and try to get the agent to
+  *persist* an attacker standing-order into its memory/notes (canary + a
+  `save_memory`/`remember` forbidden-tool variant). bastionprobe fires them and
+  reports land-rate under the `memory-poisoning` tactic; feeds the bastionmemory
+  threat model. Plus a `benign_memory` trap (legitimate "remember my preference").
+- Golden contract fixtures regenerated (additive). Minor bump; run
+  `scripts/propagate.py` after publish.
+
 ## 0.3.0 - 2026-09-21
 
 Added 2026 attack families (BASTION_INTEL.md §C). **128 -> 146 rows** (96
