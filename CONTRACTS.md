@@ -40,10 +40,15 @@ cross tool boundaries:
 - **Regeneration is deliberate.** Regenerate the byte-golden from the fixture, read
   the diff, and keep the copies (bastionsupply, agentbastion, bastiongate) identical.
 
-**Separate format, not this contract:** `bastionskill harden` emits a *skill* policy
-(`default:` + a `skills:` block of per-skill verdicts + `block_capabilities`), not a
-tool allow/deny policy. It shares the `default:` key but is a different consumer path;
-lock it on its own when a consumer reads it.
+### skill policy — separate format, producer-locked
+
+`bastionskill harden` emits a *skill* policy (`default:` + a `skills:` block of
+per-skill `verdict` / `reasons` / `block_capabilities`), not a tool allow/deny
+policy. It has no consumer in the suite yet, so it carries a **producer-only lock**:
+`bastionskill/tests/test_policy_contract.py` freezes its output of a fixed report
+against `tests/fixtures/skill_policy_golden.yaml` (only `malice`/`shadow` findings
+trip the verdict; `capability`-kind is informational). Add a consumer lock the day a
+tool reads it.
 
 ## trace schema — locked (bastionprobe → bastiontrace)
 
