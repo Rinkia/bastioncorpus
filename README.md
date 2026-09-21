@@ -13,7 +13,7 @@ three tools pull from instead of each rolling its own.
 All three take `bastioncorpus>=0.2.0` as a dependency and keep a built-in
 fallback, so one source of truth feeds prevent, attack, and investigate.
 
-Same taxonomy, three directions. **128 rows** (81 malicious payloads / 47
+Same taxonomy, three directions. **145 rows** (95 malicious payloads / 50
 benign false-positive traps; `en`/`it`/`de`/`fr`/`es`). No LLM, no cloud, no
 dependencies — pure data plus a loader and three format adapters.
 

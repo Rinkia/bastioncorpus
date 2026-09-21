@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.3.0 - 2026-09-21
+
+Added 2026 attack families (BASTION_INTEL.md §C). **128 -> 145 rows** (95
+malicious / 50 benign traps; en/it/de/fr/es).
+
+- **CoT-forgery / role-confusion** (`cot-*`, `jailbreak_persona`): text posing as
+  the assistant's own reasoning to conclude the rules do not apply. Defense rows
+  (feed agentbastion's SemanticDetector — closes the named recall gap). Multi-lingual.
+- **Compaction-summary injection** (`cmp-*`, `instruction_override`): standing
+  orders planted in the session summary layer. New `channel: "memory"` — inert for
+  probe/trace (they only fire `tool_output`), feeds agentbastion; sets up
+  bastiontrace's future memory inject-point.
+- **Repo-doc / legal-filing / dependency-metadata** (`ind-doc-*`, `ind-legal-*`,
+  `ind-depmeta-*`, `indirect_injection`): indirect injection via files the agent
+  reads (CONTRIBUTING.md, legal PDFs, package metadata). Fireable (flow to probe/trace).
+- Benign traps (`benign_reasoning`, `benign_docnote`, `benign_summary`) so the new
+  families don't inflate false positives.
+
+Golden contract fixtures regenerated deliberately (additive only). Minor bump; run
+`scripts/propagate.py` to bump dependents.
+
 ## 0.2.1 - 2026-09-11
 
 - Align two indirect exfil payloads' `tactic` to bastionprobe's established
