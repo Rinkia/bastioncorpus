@@ -7,7 +7,7 @@ cross tool boundaries:
 | Format | Producer | Consumer(s) | Contract status |
 |---|---|---|---|
 | `injections.jsonl` + adapters (`to_probe` / `to_semantic` / `to_trace`) | **bastioncorpus** | bastionprobe, agentbastion, bastiontrace | ✅ **locked** |
-| `policy.yaml` | every `harden` (bastionsupply, bastionprobe, bastiontrace, bastionskill) | agentbastion, bastiongate | 📝 documented, golden suite pending |
+| `policy.yaml` | every `harden` (bastionsupply, bastionprobe, bastiontrace, bastionskill) | agentbastion, bastiongate | ✅ **locked** (bastionsupply↔agentbastion; extend to the rest) |
 | trace schema (tool-call JSONL) | bastionprobe run output | bastiontrace analyze input | 📝 documented, golden suite pending |
 
 ## injections.jsonl adapters — locked
@@ -22,16 +22,21 @@ cross tool boundaries:
   what a consumer receives. Run `python scripts/regen_golden.py`, **read the diff**,
   and if it is intended, follow §1.2 propagation. Never edit goldens to make CI pass.
 
-## policy.yaml — the discipline to apply next
+## policy.yaml — locked (bastionsupply ↔ agentbastion)
 
-Add the same producer+consumer pair:
-1. Freeze a golden `policy.yaml` from a fixed input (`bastionsupply harden fixture.json`).
-2. Producer test in each `harden` tool: "my emitted policy still equals the golden."
-3. Consumer test in agentbastion + bastiongate: "I still load and apply the golden
-   policy" — assert the loader accepts every key the golden uses.
+- **Producer lock:** `bastionsupply/tests/test_policy_contract.py` freezes
+  `bastionsupply harden`'s output of a fixed server fixture against
+  `bastionsupply/tests/fixtures/policy_golden.yaml`.
+- **Consumer lock:** `agentbastion/tests/test_policy_contract.py` loads the
+  byte-identical golden (`agentbastion/tests/fixtures/policy_golden.yaml`) and
+  asserts every key it relies on (default/allow/deny/rate_limits) parses and
+  enforces (deny blocks, allow passes, rate limit caps).
+- **Regeneration is deliberate.** Regenerate the golden from the fixture, read the
+  diff, and keep the two copies byte-identical. Never edit a golden to pass CI.
 
-A key rename in `harden` then fails the producer; a loader that drops a key fails
-the consumer.
+**Still to extend** (same pattern, not yet locked): the other `harden` producers
+(bastionprobe, bastiontrace, bastionskill) and the bastiongate consumer
+(`tools:`/`scrub_results` keys the golden already carries).
 
 ## trace schema — the discipline to apply next
 
