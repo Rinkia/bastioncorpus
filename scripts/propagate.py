@@ -43,25 +43,36 @@ DEPENDENTS: dict[str, tuple[str, str]] = {
     "agentfirewall": ("main", "bastioncorpus"),   # dir agentfirewall / pkg agentbastion
     # bastiongate bumps its bastionsupply floor, not bastioncorpus directly:
     "bastiongate": ("master", "bastionsupply"),
+    # The hosted sandbox pins the corpus with a compatible-release pin (`==X.Y.*`).
+    "bastionsandbox": ("main", "bastioncorpus"),
     # bastionskill only depends on the corpus via the optional [prompt] extra — skip by default.
 }
 
 
 def bump_floor(pyproject_text: str, dep: str, new_version: str) -> str:
-    """Raise `dep>=X` to `dep>=new_version` in a pyproject's dependency lines.
+    """Bring `dep` up to `new_version` in a pyproject's dependency lines.
 
-    Only bumps when the existing floor is lower; leaves an already-current or
-    higher floor untouched. Pure string transform — the unit-testable core.
+    - floor `dep>=X`        -> `dep>=new_version`
+    - compatible `dep==X.Y.*` -> `dep==<new major>.<new minor>.*`
+    Never lowers anything, and leaves exact pins (`dep==X.Y.Z`) alone: moving a
+    deliberate exact pin is a human decision. Pure string transform — the
+    unit-testable core.
     """
-    pattern = re.compile(rf'("{re.escape(dep)})>=([0-9][0-9A-Za-z.\-]*)"')
+    floor = re.compile(rf'("{re.escape(dep)})>=([0-9][0-9A-Za-z.\-]*)"')
+    compatible = re.compile(rf'("{re.escape(dep)})==(\d+)\.(\d+)\.\*"')
+    new_major_minor = _version_key(new_version)[:2]
 
-    def repl(m: re.Match) -> str:
-        current = m.group(2)
-        if _version_key(current) >= _version_key(new_version):
+    def raise_floor(m: re.Match) -> str:
+        if _version_key(m.group(2)) >= _version_key(new_version):
             return m.group(0)
         return f'{m.group(1)}>={new_version}"'
 
-    return pattern.sub(repl, pyproject_text)
+    def move_compatible(m: re.Match) -> str:
+        if (int(m.group(2)), int(m.group(3))) >= new_major_minor:
+            return m.group(0)
+        return f'{m.group(1)}=={new_major_minor[0]}.{new_major_minor[1]}.*"'
+
+    return compatible.sub(move_compatible, floor.sub(raise_floor, pyproject_text))
 
 
 def _version_key(v: str) -> tuple:
@@ -85,10 +96,17 @@ def propagate_one(root: Path, dirname: str, branch: str, dep: str,
     original = pyproject.read_text(encoding="utf-8")
     bumped = bump_floor(original, dep, new_version)
     if bumped == original:
-        return f"OK   {dirname}: {dep} floor already >= {new_version}, nothing to do"
+        return f"OK   {dirname}: {dep} already at or above {new_version}, nothing to do"
 
     if not execute:
-        return f"PLAN {dirname}: bump {dep}>= to {new_version}, run tests, open PR"
+        return f"PLAN {dirname}: bump {dep} to {new_version}, run tests, open PR"
+
+    # --execute checks out, tests and commits inside this working tree. Never do that on
+    # top of someone's uncommitted work: it would test (and could tangle) their changes.
+    status = _run(["git", "status", "--porcelain"], repo)
+    if status.returncode != 0 or status.stdout.strip():
+        return (f"FAIL {dirname}: uncommitted changes in the working tree; commit or stash "
+                f"them first (propagate never runs on in-progress work)")
 
     work_branch = f"chore/bump-{dep}-{new_version}"
     for cmd in (["git", "checkout", branch], ["git", "pull", "--ff-only"],
