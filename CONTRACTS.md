@@ -45,18 +45,23 @@ The `harden` producers emitted v1 up to the versions in the table; they now emit
 - **Frozen.** No producer emits v1 any more, so nothing regenerates this golden; the
   agentbastion + bastiongate copies stay byte-identical.
 
-### skill verdict — v2 `skill:` block, producer-locked
+### skill verdict — v2 `skill:` block, locked (bastionskill writes and reads it)
 
-`bastionskill harden` (≥ 0.4) emits a `policy_version: 2` file whose only block is
-the reserved `skill:` block (`skills:` → per-skill `verdict` / `reasons` /
-`block_capabilities`). It has **no top-level `default:`**, so agentbastion and
-bastiongate load it as valid v2 with no tool policy and ignore `skill:` (up to 0.3 it
-carried `default: allow`, which loaded as an allow-every-tool policy). No suite tool
-reads the verdict yet; it is for skill loaders and CI. **Producer-only lock:**
-`bastionskill/tests/test_policy_contract.py` freezes its output of a fixed report
-against `tests/fixtures/skill_policy_golden.yaml` and asserts no tool-policy keys
-appear (only `malice`/`shadow` findings trip the verdict). Add a consumer lock the
-day a tool reads it.
+`bastionskill harden` emits a `policy_version: 2` file whose only block is the
+reserved `skill:` block: `skills:` → per-skill `verdict` (allow|deny) / `digest`
+(`sha256:<hex>` over the path + bytes of every installed file, since 0.5) / `reasons` /
+`block_capabilities`. No top-level `default:`, so agentbastion and bastiongate load it
+as valid v2 with no tool policy and ignore `skill:`.
+
+**Reader: `bastionskill install --policy` (≥ 0.5).** A `deny` (by name or digest)
+refuses; an `allow` counts only through a matching `digest`, so an approval covers
+exactly the bytes vetted. The reader skips other blocks and is strict inside `skill:`
+(unknown keys, bad verdicts or digests fail loudly).
+
+- **Producer lock:** `bastionskill/tests/test_policy_contract.py` freezes `harden`'s
+  output against `tests/fixtures/skill_policy_golden.yaml` (no tool-policy keys).
+- **Reader lock:** `bastionskill/tests/test_install.py` round-trips `harden` output
+  through `verdicts.parse` and enforces it end to end.
 
 ### memory harden — agentbastion corpus rows
 
