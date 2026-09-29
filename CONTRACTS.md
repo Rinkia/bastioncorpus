@@ -1,7 +1,7 @@
 # Shared-format contracts (PRP §1.3)
 
 The suite's value is that formats flow between tools. A format change must fail CI
-on **both** the producer and the consumer, never break one silently. Three formats
+on **both** the producer and the consumer, never break one silently. Four formats
 cross tool boundaries:
 
 | Format | Producer | Consumer(s) | Contract status |
@@ -9,6 +9,7 @@ cross tool boundaries:
 | `injections.jsonl` + adapters (`to_probe` / `to_semantic` / `to_trace`) | **bastioncorpus** | bastionprobe, agentbastion, bastiontrace | ✅ **locked** |
 | `policy.yaml` (tool policy) | `harden` in bastionsupply, bastionprobe, bastiontrace | agentbastion, bastiongate | ✅ **locked** (all producers + both consumers) |
 | trace schema (tool-call JSONL) | bastionprobe run output | bastiontrace analyze input | ✅ **locked** |
+| `policy.yaml` **v2** (`policy_version: 2`: tool policy + detector modes) | hand-written (no `harden` emits v2 yet) | agentbastion ≥ 0.12, bastiongate ≥ 0.8 | ✅ **consumer-locked** (both) |
 
 ## injections.jsonl adapters — locked
 
@@ -49,6 +50,47 @@ policy. It has no consumer in the suite yet, so it carries a **producer-only loc
 against `tests/fixtures/skill_policy_golden.yaml` (only `malice`/`shadow` findings
 trip the verdict; `capability`-kind is informational). Add a consumer lock the day a
 tool reads it.
+
+## policy.yaml v2 — consumer-locked (agentbastion + bastiongate)
+
+`policy_version: 2` adds per-detector modes (`off | shadow | enforce`, the kill
+switch) to the tool policy and is validated **strictly**: anything a consumer does
+not understand fails at load/startup, never silently.
+
+- **Shape.** A frozen shared core (`policy_version`, `default`, `allow`, `deny`,
+  `rate_limits`, `detectors`) plus one block per tool (`gate:`, `bastion:`,
+  `supply:`, `skill:`). Each tool validates the core and **its own** block, and never
+  looks inside another tool's block, so one tool can add a knob without breaking the
+  others. Changing the core is a suite-wide BREAKING change.
+- **Tool policy.** `default` is required only alongside `allow` / `deny` /
+  `rate_limits`; `default: allow` with a non-empty allow list is rejected (unlisted
+  tools are denied whenever an allow list exists).
+- **Detector IDs are namespaced.** `bastion.*` (agentbastion's detectors) and
+  `custom.*` (a user's own signatures) are run by agentbastion. In bastiongate they
+  reach agentbastion deep-inspect and require `gate: {result_inspector: agentbastion}`.
+  bastiongate has **no** `gate.*` IDs (its `gate:` knobs are the modes:
+  `scan_*: false` = off, `on_*: warn` = shadow) and rejects `gate.*` lines.
+  `supply.*` / `skill.*` are reserved for those tools and ignored by the others.
+- **Per-consumer differences (by design).** bastiongate accepts and ignores
+  `rate_limits` (no rate limiter). A detectors-only file installs no tool policy in
+  agentbastion and allows every tool in bastiongate: the same outcome.
+- **Version floors.** Older consumers load a v2 file without error but drop what they
+  don't know (agentbastion < 0.12 ignores `detectors:`; bastiongate < 0.8 also ignores
+  the whole `gate:` block). `bastionsupply doctor --policy FILE` (≥ 0.7) warns about
+  installed consumers below the floor.
+- **Consumer locks (both load the byte-identical golden `tests/fixtures/policy_v2_golden.yaml`):**
+  - `agentbastion/tests/test_policy_v2_contract.py`: exact parse (foreign namespaces
+    dropped) + tool decisions + kill switch / shadow / still-enforced detectors.
+  - `bastiongate/tests/test_policy_v2_contract.py`: exact parse (`gate:` knobs and
+    defaults, `bastion.*` modes forwarded) + tool decisions + the same detector
+    decisions through deep-inspect.
+- **Producer lock: not yet.** `harden` still emits v1. When a producer emits v2, add
+  its producer lock here against the same golden.
+- **Regeneration is deliberate.** Change the golden in both consumer repos in the same
+  change, keep the copies byte-identical (compare sha256), read the diff.
+- **v1 caveat.** In v1 a file **without** `default:` is `deny` in agentbastion but
+  `allow` in bastiongate. v2 sidesteps this by requiring `default:` whenever tool
+  lists are present; v1 behavior is unchanged.
 
 ## trace schema — locked (bastionprobe → bastiontrace)
 
