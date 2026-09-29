@@ -45,15 +45,26 @@ The `harden` producers emitted v1 up to the versions in the table; they now emit
 - **Frozen.** No producer emits v1 any more, so nothing regenerates this golden; the
   agentbastion + bastiongate copies stay byte-identical.
 
-### skill policy — separate format, producer-locked
+### skill verdict — v2 `skill:` block, producer-locked
 
-`bastionskill harden` emits a *skill* policy (`default:` + a `skills:` block of
-per-skill `verdict` / `reasons` / `block_capabilities`), not a tool allow/deny
-policy. It has no consumer in the suite yet, so it carries a **producer-only lock**:
+`bastionskill harden` (≥ 0.4) emits a `policy_version: 2` file whose only block is
+the reserved `skill:` block (`skills:` → per-skill `verdict` / `reasons` /
+`block_capabilities`). It has **no top-level `default:`**, so agentbastion and
+bastiongate load it as valid v2 with no tool policy and ignore `skill:` (up to 0.3 it
+carried `default: allow`, which loaded as an allow-every-tool policy). No suite tool
+reads the verdict yet; it is for skill loaders and CI. **Producer-only lock:**
 `bastionskill/tests/test_policy_contract.py` freezes its output of a fixed report
-against `tests/fixtures/skill_policy_golden.yaml` (only `malice`/`shadow` findings
-trip the verdict; `capability`-kind is informational). Add a consumer lock the day a
-tool reads it.
+against `tests/fixtures/skill_policy_golden.yaml` and asserts no tool-policy keys
+appear (only `malice`/`shadow` findings trip the verdict). Add a consumer lock the
+day a tool reads it.
+
+### memory harden — agentbastion corpus rows
+
+`bastionmemory harden` (≥ 0.2) emits `injections.jsonl` rows `{text, label,
+category}` (category `memory_<check>`) for its high-risk (`malice`) entries only: the
+same row shape bastionprobe/bastiontrace `harden` emit, which agentbastion loads as
+`SemanticDetector` templates. Plain directives are left out (legitimate user rules
+would become false positives). Locked by `bastionmemory/tests/test_harden.py`.
 
 ## policy.yaml v2 — locked (all producers + both consumers)
 
