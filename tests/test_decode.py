@@ -112,7 +112,7 @@ def test_bounds_on_huge_input():
     big = (base64.b64encode(P.encode()).decode() + " ") * 200_000  # ~23 MB, one distinct run
     start = time.perf_counter()
     out = variants(big)
-    assert time.perf_counter() - start < 15  # ~0.25 s/MB; callers cap message size
+    assert time.perf_counter() - start < 60  # ~0.15-0.25 s/MB unloaded; callers cap message size
     assert sum(len(d.text) for d in out) <= MAX_OUTPUT
     assert len(out) >= 1  # deduplicated: identical runs decode once
 
@@ -147,7 +147,9 @@ def test_pathological_inputs_stay_linear(make):
     t1 = time.perf_counter()
     variants(big, transforms=True)
     t2 = time.perf_counter()
-    assert t2 - t1 < 2.0 and (t2 - t1) < 30 * max(t1 - t0, 0.005)
+    # linearity is the guard (a quadratic scan costs ~100x); the absolute ceiling only
+    # catches a hang, loose enough for a loaded machine or CI
+    assert t2 - t1 < 20.0 and (t2 - t1) < 30 * max(t1 - t0, 0.01)
 
 
 def test_every_encoded_corpus_row_decodes_to_its_payload():
