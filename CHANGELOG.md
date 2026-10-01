@@ -13,9 +13,18 @@
 
   Decoded text is kept only if it reads like text, so JWT signatures, hashes, keys, UUIDs and
   image data decode to nothing. Nested encodings are decoded up to `max_depth`.
-- Bounds: decoded output is at most 4x the input and at most 1 MB, at most 256 runs, and every
-  regex is linear (pathological inputs have tests). Cost is about 0.7 ms for a 4 KB message.
-  Still zero dependencies.
+- Bounds: each run is decoded whole and returned in overlapping 64 KB chunks, so a payload
+  anywhere in a huge run is seen; total output is at most 4 M characters; every regex is
+  linear. Cost is about 0.8 ms for a 4 KB message and 0.2 to 2 s per MB. Scanners cap their
+  input and fail closed above it. Still zero dependencies.
+- Hardened by two security-review rounds before release, the second verified by probes:
+  - junk runs or one huge benign run can no longer hide a later payload;
+  - base64 is found after `=` or `-` and when line-wrapped or spaced;
+  - base85 is found inside JSON and quotes;
+  - also decoded: `0x` / `\x` / word-grouped hex, lowercase base32, chained base64-of-hex,
+    percent and backslash escapes mixed into words, misaligned / 7-bit / `0b` binary, `\U`
+    escapes, UTF-16, bare ascii85;
+  - lone surrogates never reach a caller.
 - Rows (category `obfuscation`, tactic `enc-<encoding>`):
   - 14 tool-output payloads (`check=tool`, `send_email`): one bare per encoding, plus 3 with a
     "decode and follow" wrapper;
