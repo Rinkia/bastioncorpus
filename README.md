@@ -52,6 +52,29 @@ semantic   = to_semantic(rows)    # {"templates": [...], "corpus": [...]}
 signatures = to_trace(rows)       # canary-stripped substring signatures
 ```
 
+## Decode and rescan
+
+Obfuscation jailbreaks hide an instruction in an encoding the model reads fluently but a text
+detector does not. Every Bastion scanner runs its checks on the decoded views too:
+
+```python
+from bastioncorpus import variants
+
+for d in variants(text):                  # encoded runs only (cheap): what scanners use
+    print(d.encoding, d.text)             # e.g. "base64", "hex>base64", "binary", "tags"
+variants(user_text, transforms=True)      # + rot13, leet, reversed, spaced letters
+```
+
+- **Run-based:** base64/base64url, base32, hex, binary, ascii85, base85, Morse,
+  percent-encoding, `\u`/`\x` escapes, Unicode tag characters.
+- **Text filter:** decoded output is kept only if it reads like text, so tokens, hashes, keys
+  and image data produce nothing.
+- **Bounds:** at most 4x the input and 1 MB of output; every regex is linear.
+
+**Limits:** made-up ciphers, acrostics and "first letter of each word" schemes are not
+decodable by enumeration. Detection raises the bar; the guarantee comes from action-level
+controls (allow lists on what the agent may call), which encoding cannot bypass.
+
 ## Schema
 
 One row per attack (or benign trap). `text` may carry a single `{canary}`
