@@ -179,3 +179,14 @@ def test_rows_script_is_reproducible():
     shipped = {json.loads(l)["id"]: json.loads(l) for l in corpus.read_text(encoding="utf-8").splitlines() if l.strip()}
     for r in mk.rows():
         assert shipped[r["id"]] == r
+
+
+def test_wrapped_base64_regex_does_not_backtrack_inside_long_runs():
+    # regression (gate TODO "decoder cost"): starting inside an unbroken run made the
+    # wrapped-base64 regex scan and backtrack 128 chars at every position (~1 s per MB)
+    from bastioncorpus.decode import _B64_WRAPPED
+
+    run = base64.b64encode(P.encode() * 9000).decode()  # ~1 MB, no whitespace
+    start = time.perf_counter()
+    assert _B64_WRAPPED.search(run) is None
+    assert time.perf_counter() - start < 0.3

@@ -15,8 +15,12 @@
   image data decode to nothing. Nested encodings are decoded up to `max_depth`.
 - Bounds: each run is decoded whole and returned in overlapping 64 KB chunks, so a payload
   anywhere in a huge run is seen; total output is at most 4 M characters; every regex is
-  linear. Cost is about 0.8 ms for a 4 KB message and 0.2 to 2 s per MB. Scanners cap their
+  linear. Cost is about 0.8 ms for a 4 KB message and 0.2 to 0.7 s per MB. Scanners cap their
   input and fail closed above it. Still zero dependencies.
+- Performance pass (2026-10-02): the wrapped-base64 regex no longer starts inside a run (it
+  backtracked 128 characters at every position), and the printable-ratio check has a C-speed
+  fast path. 1 MB of base64 went from 1.5 s to 0.4 s, and 1 MB of hex from 2.4 s to 0.3 s.
+  `bastionprobe encoding-bench` output is byte-identical before and after.
 - Hardened by two security-review rounds before release, the second verified by probes:
   - junk runs or one huge benign run can no longer hide a later payload;
   - base64 is found after `=` or `-` and when line-wrapped or spaced;

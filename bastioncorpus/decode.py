@@ -21,7 +21,7 @@ intermediate layer (e.g. the hex inside base64) is decoded again up to
 
 Bounds: a whole run is decoded and returned in overlapping PER_RUN-sized chunks
 (a payload anywhere in a huge run is seen whole); total output at most MAX_OUTPUT
-chars; every regex is linear (about 0.2-2 s per MB of input). Never raises.
+chars; every regex is linear (about 0.2-0.7 s per MB of input). Never raises.
 
 Limit: decodable text past MAX_OUTPUT chars is not returned. Scanners must cap the
 input they hand over and fail closed above it (bastionmesh limits.max_message_chars,
@@ -52,7 +52,9 @@ class Decoded:
 # Every repeat is bounded or anchored on a literal, so a scan stays linear in the
 # input (an unbounded `[^%]*` before a `%` re-scans from every start: quadratic).
 _B64 = re.compile(r"(?<![A-Za-z0-9+/])[A-Za-z0-9+/_-]{16,}={0,2}")
-_B64_WRAPPED = re.compile(r"(?:[A-Za-z0-9+/_-]{4,128}[ \t\r\n]{1,4}){3,}[A-Za-z0-9+/_-]{2,128}={0,2}")
+# starts only at a token boundary: a start inside a long run would scan 128 chars and
+# backtrack at every position (about 1 s per MB of unbroken base64)
+_B64_WRAPPED = re.compile(r"(?<![A-Za-z0-9+/_-])(?:[A-Za-z0-9+/_-]{4,128}[ \t\r\n]{1,4}){3,}[A-Za-z0-9+/_-]{2,128}={0,2}")
 _B32 = re.compile(r"(?<![A-Za-z2-7])[A-Za-z2-7]{16,}={0,6}")
 _HEX = re.compile(r"(?<![0-9A-Fa-f])(?:0x)?[0-9A-Fa-f]{16,}(?![0-9A-Fa-f])")
 _HEX_SEPARATED = re.compile(
@@ -104,7 +106,12 @@ def _as_text(raw) -> str | None:
     return _SURROGATE.sub("�", raw).strip()  # lone surrogates never reach a caller
 
 
+_NO_WS = str.maketrans("", "", "\t\n\r")
+
+
 def _ratio(text: str) -> float:
+    if text and text.translate(_NO_WS).isprintable():  # common case at C speed
+        return 1.0
     return sum(1 for c in text if c.isprintable() or c in "\t\n\r") / len(text) if text else 0.0
 
 
