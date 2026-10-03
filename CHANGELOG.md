@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.5.0 (unreleased)
+## 0.5.0 (2026-10-04)
 
 **Decode and rescan**, plus encoded-payload rows. **150 -> 181 rows** (118 malicious / 63 benign).
 
