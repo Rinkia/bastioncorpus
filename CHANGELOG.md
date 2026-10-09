@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.6.0 (unreleased)
+
+**`bastioncorpus.tally`** — the shared promotion-bar tally. No corpus rows changed.
+
+Every shadow-mode detector in the suite ships behind a written bar ("20+ real sessions with 0
+false blocks, then the default flips"), and three of the four bars had **no instrumentation at
+all**: bastiongate, bastionsupply and bastionmesh could not report the numbers their own bars are
+written against, so they read 0 for weeks. This is the measurement half, shared so each tool does
+not reinvent it (and reinvent its bugs).
+
+- `TallySpec` describes one tool's log in field names: which rows count as the detector firing,
+  which field means "this row is what fired" versus "firing, now or earlier", and what one unit
+  is (`session` | `card` | `run`).
+- `read_log(path)` reads an append-only JSONL log. Damaged lines, non-object rows and unknown
+  future fields are skipped, because a half-written last line is normal for a log a live process
+  appends to. A **missing** log returns `None`; an **empty** one returns `[]`.
+- `summarize(rows, spec)` returns one object with the same shape for every tool: `records`,
+  `sessions`, `fired_by_rule`, `repeat_by_rule`, `shadow_notes`, `window`, plus `unit` and
+  `counted_as` so a bar always states what it counted.
+- `append(path, row)` appends one row, stamping `ts`, creating parents, and fsyncing.
+
+Two lessons are built in rather than left to callers:
+
+- **Fired is not the same as still firing.** bastionfuse counted every call refused *after* a trip
+  as another trip, so one trip plus N refusals read as N+1 and inflated the bar (bastionfuse
+  issue #6). The two are always separate here, and a spec that cannot distinguish them reports
+  `repeat_by_rule: null` rather than claiming zero.
+- **"No log" must never look like "clean".** A missing log yields null counts and a note, never
+  zeros, because an unmeasured run that reads as a clean run is the failure this module exists to
+  prevent.
+
+Deliberately not included: any judgement of whether a flagged flow was benign. A false positive is
+a human call, so the summary reports the observable split and the dogfood guides stay where a
+person records how many were false.
+
+Design: `suite-tally-DESIGN.md` at the workspace root.
+
 ## 0.5.0 (2026-10-04)
 
 **Decode and rescan**, plus encoded-payload rows. **150 -> 181 rows** (118 malicious / 63 benign).
