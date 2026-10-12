@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.6.0 (unreleased)
+## 0.6.0 (2026-10-12)
 
 **`bastioncorpus.tally`** — the shared promotion-bar tally. No corpus rows changed.
 
